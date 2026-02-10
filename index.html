@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>We are ARASHI｜グッズ購入メモ</title>
+
+<style>
+html, body { margin:0; padding:0; font-family:sans-serif; background:#fff; }
+.main { padding:16px; }
+
+.main-title { text-align:center; padding:24px 10px; background:#f8f8f8; }
+.main-title .anniv { display:block; font-size:14px; letter-spacing:1px; }
+.main-title .title-main { display:block; font-size:24px; font-weight:900; margin-top:4px; }
+
+.summary-fixed {
+  position:sticky; top:0; background:#fff; border-bottom:2px solid #000;
+  padding:12px 16px; display:flex; justify-content:space-between; align-items:center; z-index:10;
+}
+
+.group-title {
+  font-weight:bold;
+  margin-top:28px;
+  padding-top:12px;
+  padding-bottom:6px;
+  border-top:1px solid #ddd;
+  border-bottom:1px solid #000;
+  font-size:16px;
+}
+
+.item { display:flex; gap:10px; align-items:center; padding:10px 0; }
+
+/* 行と行の間だけ罫線を出す */
+.item + .item { border-top:1px solid #eee; }
+
+/* 各グループの最後の行の線は消す */
+.item:last-child { border-top:none; }
+
+
+.label { flex:1; }
+.price { font-size:12px; color:#666; margin-left:6px; }
+
+input { width:44px; text-align:center; font-size:16px; }
+.qty-btn { width:36px; height:36px; }
+
+button.save-btn { background:#000; color:#fff; border:none; padding:8px 14px; }
+button.reset-btn { background:#999; color:#fff; border:none; padding:8px 14px; }
+</style>
+</head>
+
+<body>
+
+<h1 class="main-title">
+  <span class="anniv">GOODS LIST</span>
+  <span class="title-main">We are ARASHI</span>
+</h1>
+
+<div class="summary-fixed">
+  <div>
+    合計：<span id="totalQty">0</span>点 / ¥<span id="totalPrice">0</span>
+  </div>
+  <div style="display:flex; gap:8px;">
+    <button class="save-btn" onclick="saveAsImage()">画像で保存</button>
+    <button class="reset-btn" onclick="resetAll()">リセット</button>
+  </div>
+</div>
+
+<div class="main" id="list"></div>
+
+<script>
+const MEMBERS = ["相葉","松本","二宮","大野","櫻井"];
+
+const TOUR_NAMES = Array.from({length:38}, (_,i)=>`LIVE ${i+1}`);
+
+const ITEMS = [
+  { name: "ジャンボうちわ", price: 800, names: MEMBERS },
+  { name: "クリアファイル", price: 600, names: [...MEMBERS, "集合"] },
+  { name: "歴代ツアーロゴマグネット", price: 500, names: TOUR_NAMES },
+
+  { name: "パンフレット（会場先行）", price: 2500 },
+  { name: "ARASHIライト", price: 5500 },
+  { name: "ショッピングバッグ", price: 3200 },
+  { name: "Tシャツ", price: 4500 },
+  { name: "バスタオル", price: 3800 },
+  { name: "ポーチ", price: 2800 },
+  { name: "PVCコースター", price: 1000 },
+  { name: "フォンタブストラップ", price: 1800 },
+  { name: "チェンジングマグカップ", price: 3500 },
+  { name: "ライブフォトマスキングテープ", price: 1200 },
+  { name: "We are ARASHIロゴマグネット", price: 800 },
+  { name: "ミニうちわ", price: 400 },
+  { name: "ヘアクリップ", price: 900 }
+];
+
+const list = document.getElementById("list");
+
+ITEMS.forEach((item, i) => {
+  const names = item.names ?? null;
+
+  const title = document.createElement("div");
+  title.className = "group-title";
+  title.textContent = `■ ${item.name}`;
+  list.appendChild(title);
+
+  if (!names) {
+    const row = document.createElement("div");
+    row.className = "item";
+
+    row.innerHTML = `
+      <span class="label">${item.name}<span class="price">¥${item.price.toLocaleString()}</span></span>
+      <button class="qty-btn" onclick="changeQty('${i}_0', -1)">−</button>
+      <input id="qty_${i}_0" type="number" value="0" min="0" oninput="calc()" />
+      <button class="qty-btn" onclick="changeQty('${i}_0', 1)">＋</button>
+    `;
+
+    list.appendChild(row);
+
+  } else {
+
+    names.forEach((n, t) => {
+      const row = document.createElement("div");
+      row.className = "item";
+
+      const label = document.createElement("label");
+      label.className = "label";
+      label.textContent = n;
+
+      const price = document.createElement("span");
+      price.className = "price";
+      price.textContent = `¥${item.price.toLocaleString()}`;
+
+      label.appendChild(price);
+
+      row.innerHTML = `
+        <button class="qty-btn" onclick="changeQty('${i}_${t}', -1)">−</button>
+        <input id="qty_${i}_${t}" type="number" value="0" min="0" oninput="calc()" />
+        <button class="qty-btn" onclick="changeQty('${i}_${t}', 1)">＋</button>
+      `;
+
+      row.prepend(label);
+      list.appendChild(row);
+    });
+
+  }
+});
+
+function changeQty(key, diff) {
+  const el = document.getElementById(`qty_${key}`);
+  el.value = Math.max(0, Number(el.value) + diff);
+  calc();
+}
+
+function calc() {
+  let qty = 0, price = 0;
+
+  ITEMS.forEach((item, i) => {
+    const names = item.names ?? [""];
+    names.forEach((_, t) => {
+      const v = Number(document.getElementById(`qty_${i}_${t}`).value);
+      if (!v) return;
+      qty += v;
+      price += v * item.price;
+    });
+  });
+
+  totalQty.textContent = qty;
+  totalPrice.textContent = price.toLocaleString();
+  saveData();
+}
+
+function saveData() {
+  const data = {};
+  ITEMS.forEach((item, i) => {
+    const names = item.names ?? [""];
+    names.forEach((_, t) => {
+      data[`${i}_${t}`] = document.getElementById(`qty_${i}_${t}`).value;
+    });
+  });
+  localStorage.setItem("purchaseMemo", JSON.stringify(data));
+}
+
+function loadData() {
+  const data = JSON.parse(localStorage.getItem("purchaseMemo") || "{}");
+  Object.keys(data).forEach(key => {
+    const el = document.getElementById(`qty_${key}`);
+    if (el) el.value = data[key];
+  });
+}
+
+function resetAll() {
+  if (!confirm("すべてリセットしますか？")) return;
+  localStorage.removeItem("purchaseMemo");
+  ITEMS.forEach((item, i) => {
+    const names = item.names ?? [""];
+    names.forEach((_, t) => {
+      document.getElementById(`qty_${i}_${t}`).value = 0;
+    });
+  });
+  calc();
+}
+
+/* ★超シンプル画像保存（画面スクショ方式） */
+function saveAsImage() {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const lines = ["We are ARASHI", "選択したグッズ", ""];
+
+  let totalQtyVal = 0;
+  let totalPriceVal = 0;
+
+  ITEMS.forEach((item, i) => {
+    const names = item.names ?? [""];
+
+    let rows = [];
+
+    names.forEach((n, t) => {
+      const el = document.getElementById(`qty_${i}_${t}`);
+      if (!el) return;
+
+      const v = Number(el.value);
+      if (!v) return;
+
+      rows.push(`${n || item.name} ×${v}　¥${(v * item.price).toLocaleString()}`);
+      totalQtyVal += v;
+      totalPriceVal += v * item.price;
+    });
+
+    if (rows.length) {
+      lines.push(`■ ${item.name}`);
+      rows.forEach(r => lines.push(`  ${r}`));
+      lines.push("");
+    }
+  });
+
+  lines.push(`合計 ${totalQtyVal}点　¥${totalPriceVal.toLocaleString()}`);
+
+  canvas.width = 800;
+  canvas.height = 80 + lines.length * 28;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#000000";
+
+  let y = 50;
+
+  lines.forEach((line, i) => {
+    if (i === 0) {
+      ctx.font = "bold 28px sans-serif";
+    } else if (i === 1) {
+      ctx.font = "18px sans-serif";
+    } else if (line.startsWith("■")) {
+      ctx.font = "bold 20px sans-serif";
+    } else {
+      ctx.font = "18px sans-serif";
+    }
+
+    ctx.fillText(line, 40, y);
+    y += 28;
+  });
+
+  const a = document.createElement("a");
+  a.download = "we_are_arashi_selected.png";
+  a.href = canvas.toDataURL("image/png");
+  a.click();
+}
+
+loadData();
+calc();
+</script>
+
+</body>
+</html>
