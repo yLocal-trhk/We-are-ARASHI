@@ -23,21 +23,43 @@ html, body { margin:0; padding:0; font-family:sans-serif; background:#fff; }
   margin-top:28px;
   padding-top:12px;
   padding-bottom:6px;
-  border-top:1px solid #ddd;
+  /* border-top:1px solid #ddd; ← 削除 */
   border-bottom:1px solid #000;
   font-size:16px;
 }
 
-.item { display:flex; gap:10px; align-items:center; padding:10px 0; }
+/* ▼ 単独商品の区切り線（薄い） */
+.single-item {
+  border-bottom:1px solid #eee;
+}
 
-/* 行と行の間だけ罫線を出す */
-.item + .item { border-top:1px solid #eee; }
+/* ▼ 複数種類 → 単独商品の切り替わり線（太め） */
+.section-divider {
+  border-bottom:2px solid #000;
+  margin-top:20px;
+}
 
-/* 各グループの最後の行の線は消す */
-.item:last-child { border-top:none; }
+.item {
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:10px 0;
+  border-bottom:1px solid #eee;
+}
 
+.item.last {
+  border-bottom:none;
+}
 
 .label { flex:1; }
+
+/* ▼ スマホだけ商品名を少し小さくする */
+@media (max-width: 480px) {
+  .label {
+    font-size: 14px;
+  }
+}
+
 .price { font-size:12px; color:#666; margin-left:6px; }
 
 input { width:44px; text-align:center; font-size:16px; }
@@ -51,7 +73,7 @@ button.reset-btn { background:#999; color:#fff; border:none; padding:8px 14px; }
 <body>
 
 <h1 class="main-title">
-  <span class="anniv">GOODS LIST</span>
+  <span class="anniv">Goods List</span>
   <span class="title-main">We are ARASHI</span>
 </h1>
 
@@ -69,7 +91,6 @@ button.reset-btn { background:#999; color:#fff; border:none; padding:8px 14px; }
 
 <script>
 const MEMBERS = ["相葉","松本","二宮","大野","櫻井"];
-
 const TOUR_NAMES = Array.from({length:38}, (_,i)=>`LIVE ${i+1}`);
 
 const ITEMS = [
@@ -92,58 +113,57 @@ const ITEMS = [
   { name: "ヘアクリップ", price: 900 }
 ];
 
+
 const list = document.getElementById("list");
 
+let multiEnded = false; // 複数種類が終わったかどうか
+
 ITEMS.forEach((item, i) => {
-  const names = item.names ?? null;
 
-  const title = document.createElement("div");
-  title.className = "group-title";
-  title.textContent = `■ ${item.name}`;
-  list.appendChild(title);
+  // ▼ 複数種類の商品
+  if (item.names) {
 
-  if (!names) {
-    const row = document.createElement("div");
-    row.className = "item";
+    const title = document.createElement("div");
+    title.className = "group-title";
+    title.textContent = `■ ${item.name}`;
+    list.appendChild(title);
 
-    row.innerHTML = `
-      <span class="label">${item.name}<span class="price">¥${item.price.toLocaleString()}</span></span>
-      <button class="qty-btn" onclick="changeQty('${i}_0', -1)">−</button>
-      <input id="qty_${i}_0" type="number" value="0" min="0" oninput="calc()" />
-      <button class="qty-btn" onclick="changeQty('${i}_0', 1)">＋</button>
-    `;
-
-    list.appendChild(row);
-
-  } else {
-
-    names.forEach((n, t) => {
+    item.names.forEach((n, t) => {
       const row = document.createElement("div");
-      row.className = "item";
-
-      const label = document.createElement("label");
-      label.className = "label";
-      label.textContent = n;
-
-      const price = document.createElement("span");
-      price.className = "price";
-      price.textContent = `¥${item.price.toLocaleString()}`;
-
-      label.appendChild(price);
+      row.className = "item" + (t === item.names.length - 1 ? " last" : "");
 
       row.innerHTML = `
+        <span class="label">${n}<span class="price"> ¥${item.price.toLocaleString()}</span></span>
         <button class="qty-btn" onclick="changeQty('${i}_${t}', -1)">−</button>
         <input id="qty_${i}_${t}" type="number" value="0" min="0" oninput="calc()" />
         <button class="qty-btn" onclick="changeQty('${i}_${t}', 1)">＋</button>
       `;
-
-      row.prepend(label);
       list.appendChild(row);
     });
 
+  } else {
+
+    // ▼ 複数種類 → 単独商品の切り替わり位置に太線
+    if (!multiEnded) {
+      const divider = document.createElement("div");
+      divider.className = "section-divider";
+      list.appendChild(divider);
+      multiEnded = true;
+    }
+
+    // ▼ 単独商品（薄い線で区切る）
+    const row = document.createElement("div");
+    row.className = "item single-item";
+
+    row.innerHTML = `
+      <span class="label">${item.name}<span class="price"> ¥${item.price.toLocaleString()}</span></span>
+      <button class="qty-btn" onclick="changeQty('${i}_0', -1)">−</button>
+      <input id="qty_${i}_0" type="number" value="0" min="0" oninput="calc()" />
+      <button class="qty-btn" onclick="changeQty('${i}_0', 1)">＋</button>
+    `;
+    list.appendChild(row);
   }
 });
-
 function changeQty(key, diff) {
   const el = document.getElementById(`qty_${key}`);
   el.value = Math.max(0, Number(el.value) + diff);
@@ -157,7 +177,6 @@ function calc() {
     const names = item.names ?? [""];
     names.forEach((_, t) => {
       const v = Number(document.getElementById(`qty_${i}_${t}`).value);
-      if (!v) return;
       qty += v;
       price += v * item.price;
     });
@@ -176,11 +195,11 @@ function saveData() {
       data[`${i}_${t}`] = document.getElementById(`qty_${i}_${t}`).value;
     });
   });
-  localStorage.setItem("purchaseMemo", JSON.stringify(data));
+  localStorage.setItem("We are ARASHIMemo", JSON.stringify(data));
 }
 
 function loadData() {
-  const data = JSON.parse(localStorage.getItem("purchaseMemo") || "{}");
+  const data = JSON.parse(localStorage.getItem("We are ARASHIMemo") || "{}");
   Object.keys(data).forEach(key => {
     const el = document.getElementById(`qty_${key}`);
     if (el) el.value = data[key];
@@ -189,7 +208,7 @@ function loadData() {
 
 function resetAll() {
   if (!confirm("すべてリセットしますか？")) return;
-  localStorage.removeItem("purchaseMemo");
+  localStorage.removeItem("We are ARASHIMemo");
   ITEMS.forEach((item, i) => {
     const names = item.names ?? [""];
     names.forEach((_, t) => {
@@ -199,15 +218,20 @@ function resetAll() {
   calc();
 }
 
-/* ★超シンプル画像保存（画面スクショ方式） */
+/* ▼ 画像保存 */
 function saveAsImage() {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
-  const lines = ["We are ARASHI", "選択したグッズ", ""];
+  const lines = [];
 
   let totalQtyVal = 0;
   let totalPriceVal = 0;
+
+  // ▼ 画像の最上部にタイトル2行を追加
+  lines.push({ type: "header1", text: "Goods List" });
+  lines.push({ type: "header2", text: "We are ARASHI" });
+  lines.push({ type: "space", text: "" });
 
   ITEMS.forEach((item, i) => {
     const names = item.names ?? [""];
@@ -221,42 +245,67 @@ function saveAsImage() {
       const v = Number(el.value);
       if (!v) return;
 
-      rows.push(`${n || item.name} ×${v}　¥${(v * item.price).toLocaleString()}`);
+      const label = n || item.name;
+      rows.push(`${label} ×${v}　¥${(v * item.price).toLocaleString()}`);
+
       totalQtyVal += v;
       totalPriceVal += v * item.price;
     });
 
     if (rows.length) {
-      lines.push(`■ ${item.name}`);
-      rows.forEach(r => lines.push(`  ${r}`));
-      lines.push("");
+      lines.push({ type: "title", text: `■ ${item.name}` });
+      rows.forEach(r => lines.push({ type: "row", text: r }));
+      lines.push({ type: "space", text: "" });
     }
   });
 
-  lines.push(`合計 ${totalQtyVal}点　¥${totalPriceVal.toLocaleString()}`);
+  lines.push({ type: "total", text: `合計 ${totalQtyVal}点　¥${totalPriceVal.toLocaleString()}` });
 
+  // ▼ 高さを最小限に
   canvas.width = 800;
-  canvas.height = 80 + lines.length * 28;
+  canvas.height = 60 + lines.length * 28;
 
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = "#000000";
+  let y = 40;
 
-  let y = 50;
+  lines.forEach(line => {
+    if (line.type === "header1") {
+  ctx.font = "bold 24px sans-serif";
+  ctx.fillStyle = "#000";
+  ctx.fillText(line.text, 40, y);
+  y += 32;
+  return;
+}
 
-  lines.forEach((line, i) => {
-    if (i === 0) {
-      ctx.font = "bold 28px sans-serif";
-    } else if (i === 1) {
-      ctx.font = "18px sans-serif";
-    } else if (line.startsWith("■")) {
+if (line.type === "header2") {
+  ctx.font = "bold 34px sans-serif"; // ← 大きくした！
+  ctx.fillStyle = "#000";
+  ctx.fillText(line.text, 40, y);
+  y += 40; // ← 行間も少し広げる
+  return;
+}
+
+    if (line.type === "title") {
       ctx.font = "bold 20px sans-serif";
+    } else if (line.type === "total") {
+      ctx.font = "bold 22px sans-serif";
     } else {
       ctx.font = "18px sans-serif";
     }
 
-    ctx.fillText(line, 40, y);
+    ctx.fillStyle = "#000";
+    ctx.fillText(line.text, 40, y);
+
+    if (line.type === "row") {
+      ctx.strokeStyle = "#ccc";
+      ctx.beginPath();
+      ctx.moveTo(40, y + 6);
+      ctx.lineTo(760, y + 6);
+      ctx.stroke();
+    }
+
     y += 28;
   });
 
@@ -265,7 +314,6 @@ function saveAsImage() {
   a.href = canvas.toDataURL("image/png");
   a.click();
 }
-
 loadData();
 calc();
 </script>
