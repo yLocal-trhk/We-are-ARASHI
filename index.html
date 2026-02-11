@@ -338,8 +338,16 @@ function saveAsImage() {
   canvas.width = 800;
   canvas.height = 60 + lines.length * 28;
 
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+// ▼ グラデーション背景（ARASHIメンバーカラー順）
+const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+grad.addColorStop(0.0, "#E3FFE9"); // 相葉：緑
+grad.addColorStop(0.25, "#F3E8FF"); // 松本：紫
+grad.addColorStop(0.50, "#FFF9D9"); // 二宮：黄
+grad.addColorStop(0.75, "#E8F1FF"); // 大野：青
+grad.addColorStop(1.0, "#FFE3E3"); // 櫻井：赤
+
+ctx.fillStyle = grad;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   let y = 40;
 
